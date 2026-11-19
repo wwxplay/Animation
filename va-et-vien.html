@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#152820">
+<title>Le va-et-vient interactif</title>
+<style>
+:root{color-scheme:light;--paper:#f5f2e8;--ink:#172b23;--muted:#576258;--panel:#152820;--grid:#20392e;--wire:#789084;--mint:#c1f7a9;--gold:#ffd77c;--rule:#d4d8c8;--s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s5:1.25rem;--s6:1.5rem;--s8:2rem;--s12:3rem;--small:.8125rem;--base:1rem;--title:clamp(2.25rem,5.8vw,3.5rem)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:var(--base)/1.5 system-ui,sans-serif}
+main{width:min(100% - 2rem,52rem);margin:auto;padding:clamp(var(--s6),5vw,var(--s12)) 0 var(--s6)}
+header{margin-bottom:var(--s5)}
+.eyebrow,.legend,.position{font:700 var(--small)/1.25 ui-monospace,monospace;letter-spacing:.07em;text-transform:uppercase}
+.eyebrow{display:flex;align-items:center;gap:var(--s2);color:var(--muted)}
+.eyebrow svg{width:18px;height:18px;color:#376247}
+h1{font:700 var(--title)/1.04 Georgia,serif;letter-spacing:-.045em;margin:var(--s2) 0}
+header p{margin:var(--s2) 0 0;color:var(--muted)}
+.board{overflow:hidden;border-radius:var(--s5);background:var(--panel);color:#e0eee2;box-shadow:0 12px 30px #172b231a}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);padding:var(--s4) var(--s5);border-bottom:1px solid #3b5146}
+.status{display:flex;align-items:center;gap:var(--s2);background:#263d33;padding:var(--s1) var(--s2);border-radius:99px;font-size:var(--small);font-weight:700;white-space:nowrap}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;border:1px solid currentColor}
+.on .status{background:#37412b;color:var(--gold)}
+.on .status::before{background:currentColor;box-shadow:0 0 10px var(--gold)}
+.diagram{display:block;width:min(100%,38rem);margin:auto}
+.wire{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.terminal{fill:#dceadf;stroke:var(--panel);stroke-width:1.5}
+.label,.track-label{font:700 16px system-ui,sans-serif;fill:#d1e0d5;text-anchor:middle}
+.track-label{fill:#b3c9bb}
+.track-label.selected{fill:var(--mint)}
+.pole{stroke:#dceadf;stroke-width:4;transform-box:view-box;transition:transform .22s ease}
+.left{transform-origin:118px 102px;transform:rotate(-21.1deg)}
+.right{transform-origin:272px 102px;transform:rotate(21.1deg)}
+.left.down{transform:rotate(21.1deg)}
+.right.down{transform:rotate(-21.1deg)}
+.trace{opacity:0;fill:none;stroke:var(--mint);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.on .trace{opacity:1}
+.on .flow{stroke:#f2ffe7;stroke-width:3;stroke-dasharray:2 14;animation:pulse 1.15s linear infinite}
+.glass{fill:#253e33;stroke:#9cb4a4;stroke-width:2.5;transition:fill .25s,stroke .25s}
+.on .glass{fill:var(--gold);stroke:#fff0be}
+.filament{stroke:#aac0b1;stroke-width:2;fill:none}
+.on .filament{stroke:#674b17}
+.halo,.rays{opacity:0;transition:opacity .25s}
+.on :is(.halo,.rays){opacity:1}
+.rays{stroke:var(--gold);stroke-width:2;stroke-linecap:round}
+@keyframes pulse{to{stroke-dashoffset:-32}}
+.controls{padding:0 var(--s5) var(--s5);display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid #50823e;outline-offset:3px}
+.toggle{display:flex;align-items:center;gap:var(--s3);text-align:left;border:1px solid #4a6656;background:#223b30;border-radius:var(--s3);color:#f3faf2;padding:var(--s3);min-height:64px;-webkit-tap-highlight-color:transparent}
+.toggle:hover{background:#304f40}
+.toggle:focus-visible{outline-color:var(--mint)}
+.toggle:active{transform:scale(.985)}
+.toggle strong,.position{display:block}
+.position{margin-top:var(--s1);color:#bbd3c2}
+.rocker{position:relative;flex:0 0 34px;height:20px;border:1px solid #789887;border-radius:50px;background:#152820}
+.rocker::after{content:"";position:absolute;width:12px;height:12px;top:3px;left:3px;border-radius:50%;background:var(--mint);transition:transform .22s ease}
+.toggle[aria-pressed="true"] .rocker::after{transform:translateX(14px)}
+.summary{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);border-bottom:1px solid var(--rule);padding:var(--s3) 0}
+.summary p{margin:0;font-weight:650}
+.reset{border:1px solid #aeb9aa;background:transparent;border-radius:99px;padding:var(--s2) var(--s3);color:var(--ink);font-size:var(--small);min-height:44px}
+.reset:hover{background:#e7ecdf}
+.note{margin:var(--s3) 0 0;color:var(--muted);font-size:var(--small)}
+@media(max-width:470px){
+  .bar,.controls{padding-left:var(--s3);padding-right:var(--s3)}
+  .controls,.toggle{gap:var(--s2)}
+  .toggle{padding:var(--s2)}
+  .toggle strong{font-size:.875rem;letter-spacing:-.015em}
+  .position{font-size:.75rem;letter-spacing:0}
+  .rocker{flex-basis:28px}
+  .toggle[aria-pressed="true"] .rocker::after{transform:translateX(8px)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="m11 2-7 9h5l-1 7 8-10h-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      Atelier d’électricité
+    </div>
+    <h1>Le va-et-vient</h1>
+    <p>Deux interrupteurs, une lampe. Appuie sur l’un ou l’autre pour voir ce qui change.</p>
+  </header>
+
+  <section class="board" id="board" aria-label="Simulateur de va-et-vient">
+    <div class="bar">
+      <span class="legend">Schéma interactif</span>
+      <span class="status" role="status" id="status">Lampe éteinte</span>
+    </div>
+
+    <svg viewBox="0 0 438 237" class="diagram" role="img" aria-labelledby="scheme">
+      <title id="scheme">Schéma d’un circuit va-et-vient avec deux interrupteurs, deux navettes et une lampe.</title>
+      <defs>
+        <pattern id="grid" width="18" height="18" patternUnits="userSpaceOnUse">
+          <path d="M18 0H0V18" stroke="#284035" fill="none" stroke-width="1"/>
+        </pattern>
+        <radialGradient id="light">
+          <stop stop-color="#ffd77c" stop-opacity=".45"/>
+          <stop offset="100%" stop-color="#ffd77c" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <path d="M0 0H438V237H0Z" fill="url(#grid)"/>
+      <circle class="halo" cx="372" cy="102" r="60" fill="url(#light)"/>
+      <path class="wire" d="M47 102H118 M175 80H215 M175 124H215 M272 102H350 M394 102H416V199H374"/>
+      <path class="wire pole left" id="left" d="M118 102H179.1"/>
+      <path class="wire pole right down" id="right" d="M272 102H210.9"/>
+      <path id="trace" class="trace"/>
+      <path id="flow" class="trace flow"/>
+      <g class="terminal">
+        <circle cx="47" cy="102" r="4"/><circle cx="118" cy="102" r="5"/>
+        <circle cx="175" cy="80" r="5"/><circle cx="175" cy="124" r="5"/>
+        <circle cx="215" cy="80" r="5"/><circle cx="215" cy="124" r="5"/>
+        <circle cx="272" cy="102" r="5"/><circle cx="374" cy="199" r="4"/>
+      </g>
+      <path class="rays" d="M372 69v-9M349 78l-7-7M395 78l7-7M349 126l-7 7M395 126l7 7M372 135v9"/>
+      <circle class="glass" cx="372" cy="102" r="22"/>
+      <path class="filament" d="m363 93 18 18m0-18-18 18"/>
+      <g class="label">
+        <text x="48" y="84">Phase</text>
+        <text x="372" y="168">Lampe</text>
+        <text x="336" y="205">Neutre</text>
+      </g>
+      <text x="195" y="62" class="track-label" id="track1">Navette 1</text>
+      <text x="195" y="151" class="track-label" id="track2">Navette 2</text>
+    </svg>
+
+    <div class="controls">
+      <button class="toggle" id="one" type="button" aria-label="Interrupteur 1" aria-describedby="position1" aria-pressed="false">
+        <span class="rocker" aria-hidden="true"></span>
+        <span><strong>Interrupteur 1</strong><span class="position" id="position1">Navette 1</span></span>
+      </button>
+      <button class="toggle" id="two" type="button" aria-label="Interrupteur 2" aria-describedby="position2" aria-pressed="true">
+        <span class="rocker" aria-hidden="true"></span>
+        <span><strong>Interrupteur 2</strong><span class="position" id="position2">Navette 2</span></span>
+      </button>
+    </div>
+  </section>
+
+  <div class="summary">
+    <p id="summary">Circuit ouvert : deux navettes différentes.</p>
+    <button id="reset" class="reset" type="button">Réinitialiser</button>
+  </div>
+  <p class="note">Les pointillés montrent le trajet du courant quand le circuit est fermé, pas son sens instantané. Ce schéma est une simulation, pas un guide de câblage.</p>
+</main>
+
+<script>
+const get = id => document.getElementById(id);
+let a = 0, b = 1;
+
+function draw() {
+  const on = a === b;
+  const y = a ? 124 : 80;
+  const path = `M47 102H118L175 ${y}H215L272 102H350 M394 102H416V199H374`;
+
+  get('board').classList.toggle('on', on);
+  get('left').classList.toggle('down', !!a);
+  get('right').classList.toggle('down', !!b);
+  get('trace').setAttribute('d', on ? path : '');
+  get('flow').setAttribute('d', on ? path : '');
+  get('status').textContent = on ? 'Lampe allumée' : 'Lampe éteinte';
+  get('summary').textContent = on
+    ? `Circuit fermé par la navette\u00a0${a + 1}.`
+    : 'Circuit ouvert : deux navettes différentes.';
+  get('position1').textContent = `Navette ${a + 1}`;
+  get('position2').textContent = `Navette ${b + 1}`;
+  get('track1').classList.toggle('selected', on && !a);
+  get('track2').classList.toggle('selected', on && !!a);
+  get('one').setAttribute('aria-pressed', Boolean(a));
+  get('two').setAttribute('aria-pressed', Boolean(b));
+}
+
+get('one').addEventListener('click', () => { a ^= 1; draw(); });
+get('two').addEventListener('click', () => { b ^= 1; draw(); });
+get('reset').addEventListener('click', () => { a = 0; b = 1; draw(); });
+draw();
+</script>
+</body>
+</html>
