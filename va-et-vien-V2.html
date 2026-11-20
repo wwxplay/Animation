@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit électrique : va-et-vient</title>
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #1e2430;
+    color: #eee;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+  }
+  h1 { font-size: 1.6em; margin: 0.3em 0; }
+  p.intro { max-width: 760px; margin: 0.5em auto 1em; line-height: 1.4; color: #cfd8dc; }
+
+  svg {
+    background: #ffffff;
+    border-radius: 12px;
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+
+  .wire { fill: none; stroke: #555; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s; }
+  .wire.live { stroke: #e53935; }
+  .wire.neutral { stroke: #1e88e5; }
+  .wire.flow {
+    stroke: #ffd600;
+    stroke-dasharray: 12 10;
+    animation: flow 0.5s linear infinite;
+  }
+  .wire.neutral.flow { stroke: #64b5f6; }
+  @keyframes flow { to { stroke-dashoffset: -22; } }
+
+  .lever { stroke: #111; stroke-width: 6; stroke-linecap: round; transition: all 0.3s ease; }
+  .contact { fill: #333; }
+  .pivot { fill: #222; stroke: #fff; stroke-width: 2; cursor: pointer; }
+  .pivot:hover { fill: #e65100; }
+  .label { font-size: 15px; fill: #222; font-weight: bold; }
+  .small { font-size: 12px; fill: #444; }
+
+  .lamp-off { fill: #cfd8dc; stroke: #607d8b; stroke-width: 3; transition: fill 0.3s; }
+  .lamp-on  { fill: #fff59d; stroke: #fbc02d; stroke-width: 3; transition: fill 0.3s; }
+  .glow { filter: url(#glow); }
+
+  .controls { margin: 18px 0; }
+  button {
+    background: #3949ab; color: white; border: none; border-radius: 8px;
+    padding: 10px 18px; margin: 5px; font-size: 15px; cursor: pointer;
+  }
+  button:hover { background: #5c6bc0; }
+  button.reset { background: #546e7a; }
+
+  #status {
+    font-size: 18px; margin-top: 10px; padding: 12px;
+    border-radius: 10px; display: inline-block; min-width: 420px;
+  }
+  .on  { background: #2e7d32; }
+  .off { background: #b71c1c; }
+  .rule { margin-top: 14px; font-size: 14px; color: #b0bec5; max-width: 760px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>⚡ Circuit électrique : le va-et-vient</h1>
+<p class="intro">
+  Un va-et-vient permet de commander une même lampe depuis deux endroits.
+  Cliquez sur les <b>points noirs</b> des interrupteurs (ou sur les boutons) pour changer leur position.
+</p>
+
+<svg id="circuit" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Labels -->
+  <text x="60" y="48" class="label">Phase (L)</text>
+  <text x="60" y="484" class="label">Neutre (N)</text>
+
+  <!-- Phase : toujours sous tension -->
+  <path id="w_phase" class="wire live" d="M60 60 H200 V140"/>
+
+  <!-- Neutre (bus bas) -->
+  <path id="w_neutral_bus" class="wire neutral" d="M60 460 H720"/>
+
+  <!-- Voyageur 1 : A1 -> B1 -->
+  <path id="w_t1" class="wire" d="M160 230 V190 H640 V230"/>
+  <!-- Voyageur 2 : A2 -> B2 -->
+  <path id="w_t2" class="wire" d="M240 230 V360 H560 V230"/>
+
+  <!-- Sortie commun B vers lampe -->
+  <path id="w_lampIn" class="wire" d="M600 140 H720 V230"/>
+  <!-- Retour lampe vers neutre -->
+  <path id="w_lampOut" class="wire neutral" d="M720 290 V460"/>
+
+  <!-- Contacts de l'interrupteur A -->
+  <text x="110" y="160" class="small">Interrupteur A</text>
+  <circle class="contact" cx="160" cy="230" r="5"/>
+  <circle class="contact" cx="240" cy="230" r="5"/>
+  <text x="142" y="252" class="small">1</text>
+  <text x="232" y="252" class="small">2</text>
+
+  <!-- Contacts de l'interrupteur B -->
+  <text x="565" y="160" class="small">Interrupteur B</text>
+  <circle class="contact" cx="640" cy="230" r="5"/>
+  <circle class="contact" cx="560" cy="230" r="5"/>
+  <text x="632" y="252" class="small">1</text>
+  <text x="552" y="252" class="small">2</text>
+
+  <!-- Leviers (mobiles) -->
+  <line id="leverA" class="lever" x1="200" y1="140" x2="160" y2="230"/>
+  <line id="leverB" class="lever" x1="600" y1="140" x2="640" y2="230"/>
+
+  <!-- Pivots cliquables -->
+  <circle id="pivotA" class="pivot" cx="200" cy="140" r="10"/>
+  <circle id="pivotB" class="pivot" cx="600" cy="140" r="10"/>
+
+  <!-- Lampe -->
+  <circle id="lamp" class="lamp-off" cx="720" cy="260" r="30"/>
+  <text x="690" y="318" class="small">Lampe</text>
+  <!-- Rayons lumineux -->
+  <g id="rays" stroke="#fbc02d" stroke-width="3" opacity="0">
+    <line x1="750" y1="230" x2="770" y2="210"/>
+    <line x1="760" y1="260" x2="785" y2="260"/>
+    <line x1="750" y1="290" x2="770" y2="310"/>
+  </g>
+</svg>
+
+<div class="controls">
+  <button onclick="toggle('A')">Basculer interrupteur A</button>
+  <button onclick="toggle('B')">Basculer interrupteur B</button>
+  <button class="reset" onclick="reset()">Réinitialiser</button>
+</div>
+
+<div><span id="status"></span></div>
+
+<p class="rule">
+  <b>Principe :</b> la lampe s'allume uniquement lorsque les deux interrupteurs sont dans la <b>même position</b>
+  (1-1 ou 2-2). Dans le cas contraire, le courant est interrompu par l'un des deux interrupteurs.
+  Le courant suit le chemin : <i>Phase → interrupteur A → voyageur → interrupteur B → lampe → neutre</i>.
+</p>
+
+<script>
+  // Positions : 1 ou 2
+  let sA = 1, sB = 1;
+
+  const $ = id => document.getElementById(id);
+
+  // Coordonnées des contacts et pivots
+  const geo = {
+    A: { pivot: [200, 140], 1: [160, 230], 2: [240, 230], lever: 'leverA', pivotEl: 'pivotA' },
+    B: { pivot: [600, 140], 1: [640, 230], 2: [560, 230], lever: 'leverB', pivotEl: 'pivotB' }
+  };
+
+  function toggle(sw) {
+    if (sw === 'A') sA = sA === 1 ? 2 : 1;
+    else sB = sB === 1 ? 2 : 1;
+    render();
+  }
+
+  function reset() {
+    sA = 1; sB = 1;
+    render();
+  }
+
+  // Clic sur les pivots
+  $('pivotA').addEventListener('click', () => toggle('A'));
+  $('pivotB').addEventListener('click', () => toggle('B'));
+
+  function render() {
+    const lampOn = (sA === sB);
+
+    // Positionner les leviers
+    const gA = geo.A, gB = geo.B;
+    const tA = gA[sA], tB = gB[sB];
+    const leverA = $('leverA');
+    leverA.setAttribute('x1', gA.pivot[0]); leverA.setAttribute('y1', gA.pivot[1]);
+    leverA.setAttribute('x2', tA[0]);       leverA.setAttribute('y2', tA[1]);
+    const leverB = $('leverB');
+    leverB.setAttribute('x1', gB.pivot[0]); leverB.setAttribute('y1', gB.pivot[1]);
+    leverB.setAttribute('x2', tB[0]);       leverB.setAttribute('y2', tB[1]);
+
+    // Sous tension : phase toujours, voyageur 1 si A=1, voyageur 2 si A=2
+    setWire('w_phase', true, false);
+    setWire('w_t1', sA === 1, lampOn && sA === 1);
+    setWire('w_t2', sA === 2, lampOn && sA === 2);
+    setWire('w_lampIn', lampOn, lampOn);
+    setWire('w_lampOut', true, lampOn);
+
+    // Lampe
+    const lamp = $('lamp');
+    lamp.setAttribute('class', lampOn ? 'lamp-on glow' : 'lamp-off');
+    $('rays').setAttribute('opacity', lampOn ? 1 : 0);
+
+    // Statut
+    const status = $('status');
+    if (lampOn) {
+      status.textContent = `💡 Lampe ALLUMÉE  (A = ${sA}, B = ${sB})`;
+      status.className = 'on';
+    } else {
+      status.textContent = `🌑 Lampe ÉTEINTE  (A = ${sA}, B = ${sB}) : circuit ouvert`;
+      status.className = 'off';
+    }
+  }
+
+  function setWire(id, live, flow) {
+    const el = $(id);
+    const base = el.classList.contains('neutral') ? 'wire neutral' : 'wire';
+    let cls = base;
+    if (live && !el.classList.contains('neutral')) cls += ' live';
+    if (flow) cls += ' flow';
+    el.setAttribute('class', cls);
+  }
+
+  render();
+</script>
+</body>
+</html>
